@@ -1,6 +1,6 @@
 # ADMIRE Vision-Language Model Finetuning
 
-Finetune a vision-language model on the ADMIRE dataset. 
+Finetune a vision-language model on a synthetic ADMIRE dataset. 
 Currently supports:
 - Pixtral-12B (https://huggingface.co/mistral-community/pixtral-12b)
 - CLIP (https://huggingface.co/openai/clip-vit-base-patch32)
