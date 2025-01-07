@@ -1,5 +1,10 @@
 # ADMIRE Vision-Language Model Finetuning
 
+Finetune a vision-language model on the ADMIRE dataset. 
+Currently supports:
+- Pixtral-12B (https://huggingface.co/mistral-community/pixtral-12b)
+- CLIP (https://huggingface.co/openai/clip-vit-base-patch32)
+
 ### Setup
 - Install Pyenv: https://github.com/pyenv/pyenv
 - Install the Python version specified in `.python-version` with Pyenv: `pyenv install 3.12.6`
