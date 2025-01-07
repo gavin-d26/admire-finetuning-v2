@@ -1,0 +1,59 @@
+#### SFT DATA GENERATION PROMPT ####
+
+You are an AI assistant tasked with generating Supervised Fine-Tuning (SFT) data for a vision-language model. The data will be used to train the model to analyze sentences containing compound phrases and match them to relevant images. Your goal is to create high-quality, diverse examples that mimic human-like reasoning and decision-making processes.
+
+Here is the sentence and descriptions of five images:
+
+<sentence>
+{{SENTENCE}}
+</sentence>
+
+<image_descriptions>
+<IMAGE_1_DESCRIPTION>{{IMAGE_1_DESCRIPTION}}</IMAGE_1_DESCRIPTION>
+<IMAGE_2_DESCRIPTION>{{IMAGE_2_DESCRIPTION}}</IMAGE_2_DESCRIPTION>
+<IMAGE_3_DESCRIPTION>{{IMAGE_3_DESCRIPTION}}</IMAGE_3_DESCRIPTION>
+<IMAGE_4_DESCRIPTION>{{IMAGE_4_DESCRIPTION}}</IMAGE_4_DESCRIPTION>
+<IMAGE_5_DESCRIPTION>{{IMAGE_5_DESCRIPTION}}</IMAGE_5_DESCRIPTION>
+</image_descriptions>
+
+For this specific example:
+- The compound phrase used {{COMPOUND_PHRASE}}.
+- The compund type is  {{COMPOUND_TYPE}} (idiomatic or literal).
+- The image that best matches the meaning of the compound is Image {{CORRECT_IMAGE}}.
+
+Your task is to generate an analysis that demonstrates the thought process and reasoning a vision-language model should follow when interpreting the sentence and selecting the most relevant image. The output should be in the following JSON format:
+
+<output>
+{
+  "Compound Type": "[Idiomatic/Literal] - [Brief explanation of why]",
+  "Compound": "[Identified compound phrase]",
+  "Compound Meaning": "[Explanation of the compound's meaning in the context of the sentence]",
+  "Reasoning": "[Explanation of why the selected image represents the compound's meaning in the context of the sentence the closest]"
+  "Alternative Interpretations": "[If applicable, briefly mention any other possible interpretations]"
+  "Image": "[Index Number of the image that matches the compound's meaning]",
+  "Confidence": "[High/Medium/Low] - [Brief explanation of your confidence level]"
+}
+</output>
+
+To generate high-quality SFT data:
+
+1. Identify the compound phrase in the sentence and explain why it's {{COMPOUND_TYPE}}.
+2. Provide a clear and concise explanation of the compound's meaning in the context of the sentence.
+3. Analyze the image descriptions and explain why Image {{CORRECT_IMAGE}} best matches the compound's meaning. Include specific details from the image description that support this choice.
+4. Assume that the images have the Image Index Number in the top left corner as that is what the data will look like to the VLM.
+5. If applicable, mention alternative interpretations or images that could be considered, but explain why they are less suitable than the chosen image.
+6. Assign a confidence level (High/Medium/Low) based on how well the chosen image matches the compound's meaning, and briefly explain this rating.
+
+Before providing the final JSON output, use <reasoning> tags to explain your thought process for each step of the analysis. This should demonstrate the kind of reasoning the vision-language model should learn to perform.
+
+Additional guidelines:
+- Ensure your analysis is thorough and logical, considering multiple aspects of the sentence and images.
+- Use natural language that mimics human-like reasoning and decision-making.
+- If the compound type is idiomatic, explain both the literal and figurative meanings to show understanding of the idiom.
+- If the compound type is literal, explain why it's not being used idiomatically in this context.
+- Consider cultural context and potential multiple meanings when analyzing the compound and images.
+- If none of the images seem to match the compound's meaning perfectly, explain the limitations and why the chosen image is still the best match.
+
+Remember, the goal is to create diverse, high-quality examples that will help train the vision-language model to perform this task effectively. Your generated data should demonstrate the kind of nuanced analysis and reasoning the model should learn to emulate.
+
+Begin your analysis now, starting with your reasoning process in <reasoning> tags, followed by the JSON output in <output> tags.
