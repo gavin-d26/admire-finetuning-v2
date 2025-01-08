@@ -273,7 +273,14 @@ class TopImageAutoRegJson:
                 try:
                     pred_json = json.loads(pred_output_str)
                     if "Image" in pred_json:
-                        pred_image_list.append(pred_json["Image"])
+                        # Convert string to int if needed
+                        pred_image = pred_json["Image"]
+                        if isinstance(pred_image, str):
+                            try:
+                                pred_image = int(pred_image)
+                            except ValueError:
+                                pred_image = -1
+                        pred_image_list.append(pred_image)
                     else:
                         pred_image_list.append(-1)
                 except:
@@ -313,7 +320,14 @@ class TopImageAutoRegJson:
                 )
                 label_json = json.loads(label_output_str)
                 if "Image" in label_json:
-                    label_image_list.append(label_json["Image"])
+                    # Convert string to int if needed
+                    label_image = label_json["Image"]
+                    if isinstance(label_image, str):
+                        try:
+                            label_image = int(label_image)
+                        except ValueError:
+                            label_image = -1
+                    label_image_list.append(label_image)
                 else:
                     label_image_list.append(-1)
             except:

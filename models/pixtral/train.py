@@ -106,8 +106,8 @@ def train_pixtral(pixtral_configs):
         enable_checkpointing=True,
         default_root_dir="checkpoints/pixtral",
         # fast_dev_run=True,
-        # limit_train_batches=1,
-        # limit_test_batches=1,
+        limit_train_batches=8,
+        limit_test_batches=1,
         log_every_n_steps=1,
         strategy=strategy,
         accumulate_grad_batches=pixtral_configs["accumulate_grad_batches"],
@@ -115,7 +115,7 @@ def train_pixtral(pixtral_configs):
 
     print("Measuring accuracy on test set, before training...")
     # measure accuracy on test set, before training
-    trainer.test(model, test_loader)
+    # trainer.test(model, test_loader)
 
     print("Training the model...")
     # Train the model

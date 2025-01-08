@@ -98,30 +98,22 @@ class Pixtral12B(pl.LightningModule):
             )
 
         # Apply FSDP to the whole model
-        fully_shard(self, **fsdp_config)
+        fully_shard(self.pixtral, **fsdp_config)
 
+        self.eval()
         # Freeze base model parameters
-        for param in self.pixtral.parameters():
-            param.requires_grad = False
-
-        # unfreeze LoRA parameters
-        for name, param in self.pixtral.language_model.named_parameters():
-            if "lora" in name:
-                param.requires_grad = True
+        for name, param in self.pixtral.named_parameters():
+            if "lora" not in name:
+                param.requires_grad = False
 
     def forward(self, inputs, training=False, **kwargs):
         # Ensure model is in training mode during training
         if training:
-            self.pixtral.train()
-            # Enable gradients for the forward pass
-            with torch.set_grad_enabled(True):
-                outputs = self.pixtral(**inputs, **kwargs)
-                # Ensure loss has gradients
-                if hasattr(outputs, "loss") and not outputs.loss.requires_grad:
-                    outputs.loss = outputs.loss.requires_grad_()
-                return outputs
+            self.pixtral.language_model.train()
+            # Enable gradients for the forward pa
+            return self.pixtral(**inputs, **kwargs)
         else:
-            self.pixtral.eval()
+            self.pixtral.language_model.eval()
             return self.pixtral(**inputs, **kwargs)
 
     def on_train_epoch_start(self):
