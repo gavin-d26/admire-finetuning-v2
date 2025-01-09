@@ -147,6 +147,7 @@ def _preprocess_samples_for_pixtral(
     # use 1: tokens in labels and :-1 in input_ids
     input_dict["labels"] = input_dict["labels"][:, 1:]
     input_dict["input_ids"] = input_dict["input_ids"][:, :-1]
+    input_dict["attention_mask"] = input_dict["attention_mask"][:, :-1]
 
     # SFT only on model generations.
     # find the instruction end token and set all tokens before it to -100 in labels.

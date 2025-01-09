@@ -9,3 +9,6 @@ sft_data
 wandb
 sem_eval_1_inf.ipynb
 *.csv
+admire_fine_tuning
+checkpoints
+dummy.py
