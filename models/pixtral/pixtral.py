@@ -161,6 +161,13 @@ class Pixtral12B(pl.LightningModule):
         self.test_perplexity = Perplexity()
         self.csvs_created += 1
 
+    def on_train_batch_end(self):
+        # TODO: set the base model gradients to None
+        # for name, param in self.pixtral.named_parameters():
+        #     if "lora" not in name:
+        #         param.grad = None
+        pass
+
     def on_train_epoch_end(self):
         if self.trainer.is_global_zero:
             self.log(
@@ -192,7 +199,7 @@ class Pixtral12B(pl.LightningModule):
             )
 
     def configure_optimizers(self):
-        # Only optimize parameters that require gradients
+        # TODO: Only optimize parameters that require gradients (LoRA)
         trainable_params = [p for p in self.parameters() if p.requires_grad]
         optimizer = torch.optim.AdamW(
             trainable_params,
