@@ -21,11 +21,14 @@ pixtral_configs = {
     "ignore_token": "</s>",  # token to ignore in the predictions and targets
     
     # training hyperparameters
-    "learning_rate": 1e-5,
-    "train_batch_size": 3,  # reduced to prevent OOM
+    "learning_rate": 5e-7,
+    "train_batch_size": 1,  # reduced to prevent OOM
     "test_batch_size": 3,  # reduced to prevent OOM
-    "max_epochs": 3,
-    "accumulate_grad_batches": 32,
+    "max_epochs": 2,
+    "accumulate_grad_batches": 128,
+    "limit_train_batches": None,
+    "limit_test_batches": None,
+    
     
     # quantization configs
     "quantize": False,  # whether to quantize the model, nf4 with FSDP2 is unstable.
@@ -38,13 +41,13 @@ pixtral_configs = {
     "lora_path": None,  # path to load pretrained LoRA parameters from. Train a new model from scratch by leaving lora_path as None
     
     # hardware configs
-    "gpus_devices": "3, 4, 5, 2",  # device numbers to use for training
+    "gpus_devices": "0, 1, 3, 4, 5, 2",  # device numbers to use for training
     "accelerator": "gpu",  # device to use for training
-    "num_devices": 4,  # number of accelerators to use for training
+    "num_devices": 6,  # number of accelerators to use for training
     "num_workers": 6, #4  # number of workers for the dataloader
     
     # logging configs
-    "run_name": "pixtral-test1",  # run name
+    "run_name": "pixtral-test-2",  # run name
     "project_name": "admire-finetuning",  # project name
     "use_wandb": True,  # use wandb for logging
     "csv_analysis_dir_path": "analysis",  # path to save the analysis csv
@@ -54,7 +57,7 @@ pixtral_configs = {
     
     # data_parallel_size*tensor_parallel_size must be less than or equal to the number of GPUs available
     "data_parallel_size": 1,  # data parallel size
-    "tensor_parallel_size": 4,  # tensor parallel size
+    "tensor_parallel_size": 6,  # tensor parallel size
 }
 
 # put a check pixtral_configs["num_devices"] == len(pixtral_configs["gpus_devices"].split(","))

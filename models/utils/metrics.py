@@ -129,6 +129,7 @@ class Perplexity:
     def update(self, logits, targets):
         # logits.shape = (batch_size, block_size, num_classes)
         # targets.shape = (batch_size, block_size)
+        logits = logits.float()
 
         # move logits and targets to CPU
         logits = logits.cpu()
@@ -144,7 +145,7 @@ class Perplexity:
         valid_targets = targets.masked_fill(mask, 0)
 
         # Add small epsilon to prevent log(0)
-        probs = F.softmax(logits, dim=-1).clamp(min=1e-10)
+        probs = F.softmax(logits, dim=-1).clamp(min=1e-9)
         probs = probs.gather(dim=-1, index=valid_targets.unsqueeze(-1)).squeeze(
             -1
         )  # (N, S)
@@ -214,6 +215,7 @@ class TopImageAutoRegJson:
 
         # move logits and targets to CPU
         logits = logits.cpu()
+        logits = logits.float()
         targets = targets.cpu()
 
         # get the predicted labels

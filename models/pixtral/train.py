@@ -14,6 +14,7 @@ from ..utils.prompts.sft_finetuning import prompt_template
 
 
 def train_pixtral(pixtral_configs):
+    torch.set_float32_matmul_precision("high")
 
     # set environment variables
     os.environ["CUDA_VISIBLE_DEVICES"] = pixtral_configs["gpus_devices"]
@@ -106,16 +107,21 @@ def train_pixtral(pixtral_configs):
         enable_checkpointing=True,
         default_root_dir="checkpoints/pixtral",
         # fast_dev_run=True,
-        # limit_train_batches=1,
-        # limit_test_batches=1,
+        limit_train_batches=pixtral_configs["limit_train_batches"],
+        limit_test_batches=pixtral_configs["limit_test_batches"],
         log_every_n_steps=1,
         strategy=strategy,
         accumulate_grad_batches=pixtral_configs["accumulate_grad_batches"],
+        # gradient_clip_val=1.0,
+        # gradient_clip_algorithm="norm",
     )
 
-    print("Measuring accuracy on test set, before training...")
-    # measure accuracy on test set, before training
-    trainer.test(model, test_loader)
+    print("configuring model...")
+    model.configure_model()
+
+    # print("Measuring accuracy on test set, before training...")
+    # # measure accuracy on test set, before training
+    # trainer.test(model, test_loader)
 
     print("Training the model...")
     # Train the model
@@ -126,8 +132,9 @@ def train_pixtral(pixtral_configs):
     trainer.test(model, test_loader)
 
     # save the peft model
-    model.pixtral.language_model.save_pretrained(
-        f"checkpoints/pixtral/peft_model/{pixtral_configs['run_name']}/"
-    )
+    if pixtral_configs["strategy"] != "model_parallel":
+        model.pixtral.language_model.save_pretrained(
+            f"checkpoints/pixtral/peft_model/{pixtral_configs['run_name']}/"
+        )
 
     return model

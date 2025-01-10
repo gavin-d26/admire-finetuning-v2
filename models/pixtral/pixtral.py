@@ -7,6 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import checkpoint_wrapper  # fmt: skip
 from torch.distributed._composable.fsdp.fully_shard import fully_shard
+from torch.distributed._composable.fsdp import MixedPrecisionPolicy
+from transformers.models.mistral.modeling_mistral import MistralDecoderLayer
+from torch.distributed._composable.fsdp._fsdp_api import CPUOffloadPolicy
 from peft import LoraConfig, get_peft_model
 from torchao.quantization.quant_api import (
     int8_dynamic_activation_int8_weight,
@@ -29,7 +32,7 @@ class Pixtral12B(pl.LightningModule):
 
         self.pixtral = AutoModelForImageTextToText.from_pretrained(
             self.hparams["model_url"],
-            torch_dtype=torch.float16,
+            torch_dtype=torch.bfloat16,
         )
 
         # Initialize metrics and tokenizer
@@ -65,7 +68,7 @@ class Pixtral12B(pl.LightningModule):
             self.pixtral.language_model, lora_config
         )
 
-        self.pixtral.language_model.half()
+        self.pixtral.language_model.bfloat16()
 
         # Load LoRA parameters if path is provided
         if "lora_path" in self.hparams and self.hparams["lora_path"] is not None:
@@ -79,14 +82,27 @@ class Pixtral12B(pl.LightningModule):
         self.model_configured = True
 
         # Apply FSDP wrapping with modified config
+        mp_policy = MixedPrecisionPolicy(
+            param_dtype=torch.bfloat16, reduce_dtype=torch.float32
+        )
         fsdp_config = {
             "mesh": self.device_mesh["tensor_parallel"],
+            "mp_policy": mp_policy,
+            # "offload_policy": CPUOffloadPolicy(pin_memory=True),
         }
         layers = self.pixtral.language_model.model.model.layers
 
+        # NOTE: Use activation checkpointing only for the MLP layers in the Transformer Decoder layers.
+        #  Activation checkpointing breaks for sdpa attention layers.
+        self.pixtral.vision_tower = checkpoint_wrapper(self.pixtral.vision_tower)
+        for mod in self.pixtral.language_model.model.model.modules():
+            if isinstance(mod, MistralDecoderLayer):
+                mod.mlp = checkpoint_wrapper(mod.mlp)
+
         for layer_id in range(len(layers)):
-            # Apply activation checkpointing
-            layers[layer_id] = checkpoint_wrapper(layers[layer_id])
+            # Apply activation checkpointing.
+            # NOTE: Activation checkpointing breaks for sdpa attention layers.
+            # layers[layer_id] = checkpoint_wrapper(layers[layer_id])
 
             # As an optimization, do not reshard after forward for the last
             # transformer block since FSDP would prefetch it immediately
@@ -109,19 +125,23 @@ class Pixtral12B(pl.LightningModule):
             if "lora" in name:
                 param.requires_grad = True
 
+        self.pixtral.eval()
+        self.pixtral.language_model.train()
+
     def forward(self, inputs, training=False, **kwargs):
         # Ensure model is in training mode during training
         if training:
-            self.pixtral.train()
-            # Enable gradients for the forward pass
-            with torch.set_grad_enabled(True):
-                outputs = self.pixtral(**inputs, **kwargs)
-                # Ensure loss has gradients
-                if hasattr(outputs, "loss") and not outputs.loss.requires_grad:
-                    outputs.loss = outputs.loss.requires_grad_()
-                return outputs
-        else:
             self.pixtral.eval()
+            self.pixtral.language_model.train()
+            # Enable gradients for the forward pass
+            # with torch.set_grad_enabled(True):
+            outputs = self.pixtral(**inputs, **kwargs)
+            # Ensure loss has gradients
+            # if hasattr(outputs, "loss") and not outputs.loss.requires_grad:
+            #     outputs.loss = outputs.loss.requires_grad_()
+            return outputs
+        else:
+            self.pixtral.language_model.eval()
             return self.pixtral(**inputs, **kwargs)
 
     def on_train_epoch_start(self):
@@ -133,14 +153,20 @@ class Pixtral12B(pl.LightningModule):
         outputs = self(batch, training=True)
         loss = outputs.loss
         self.train_top_image_accuracy.update(outputs.logits.detach(), batch["labels"])
-        self.train_perplexity.update(outputs.logits.detach(), batch["labels"])
+        self.train_perplexity.update(
+            outputs.logits.detach()[:, :-1, :], batch["labels"][:, 1:]
+        )
+        self.log("train_loss", loss.detach().item(), prog_bar=True, sync_dist=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         outputs = self(batch, training=False)
         loss = outputs.loss
         self.test_top_image_accuracy.update(outputs.logits.detach(), batch["labels"])
-        self.test_perplexity.update(outputs.logits.detach(), batch["labels"])
+        self.test_perplexity.update(
+            outputs.logits.detach()[:, :-1, :], batch["labels"][:, 1:]
+        )
+        self.log("test_loss", loss.detach().item(), prog_bar=True, sync_dist=True)
         return loss
 
     def on_train_epoch_start(self):
@@ -161,12 +187,12 @@ class Pixtral12B(pl.LightningModule):
         self.test_perplexity = Perplexity()
         self.csvs_created += 1
 
-    def on_train_batch_end(self):
-        # TODO: set the base model gradients to None
-        # for name, param in self.pixtral.named_parameters():
-        #     if "lora" not in name:
-        #         param.grad = None
-        pass
+    # def on_train_batch_end(self, outputs, batch, batch_idx):
+    #     # TODO: set the base model gradients to None. This is needed because the optimizer only updates the LoRA parameters.
+    #     for name, param in self.pixtral.named_parameters():
+    #         if "lora" not in name:
+    #             param.grad = None
+    #     # pass
 
     def on_train_epoch_end(self):
         if self.trainer.is_global_zero:
@@ -199,10 +225,8 @@ class Pixtral12B(pl.LightningModule):
             )
 
     def configure_optimizers(self):
-        # TODO: Only optimize parameters that require gradients (LoRA)
-        trainable_params = [p for p in self.parameters() if p.requires_grad]
         optimizer = torch.optim.AdamW(
-            trainable_params,
+            self.parameters(),
             lr=self.hparams["learning_rate"],
         )
         return optimizer
